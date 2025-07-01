@@ -1,15 +1,13 @@
-use client::{TelemetrySettings, telemetry::Telemetry};
+use client::telemetry::Telemetry;
 use db::kvp::KEY_VALUE_STORE;
 use gpui::{
     Action, App, Context, Entity, EventEmitter, FocusHandle, Focusable, InteractiveElement,
     ParentElement, Render, Styled, Subscription, Task, WeakEntity, Window, actions, svg,
 };
-use language::language_settings::{EditPredictionProvider, all_language_settings};
 use settings::{Settings, SettingsStore};
 use std::sync::Arc;
-use ui::{CheckboxWithLabel, ElevationIndex, Tooltip, prelude::*};
+use ui::prelude::*;
 use util::ResultExt;
-use vim_mode_setting::VimModeSetting;
 use workspace::{
     AppState, Welcome, Workspace, WorkspaceId,
     dock::DockPosition,
@@ -28,7 +26,7 @@ mod welcome_ui;
 actions!(welcome, [ResetHints]);
 
 pub const FIRST_OPEN: &str = "first_open";
-pub const DOCS_URL: &str = "https://zed.dev/docs/";
+pub const DOCS_URL: &str = "https://elpluma.com/docs/";
 
 pub fn init(cx: &mut App) {
     BaseKeymap::register(cx);
@@ -76,16 +74,6 @@ pub struct WelcomePage {
 
 impl Render for WelcomePage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let edit_prediction_provider_is_zed =
-            all_language_settings(None, cx).edit_predictions.provider
-                == EditPredictionProvider::Zed;
-
-        let edit_prediction_label = if edit_prediction_provider_is_zed {
-            "Edit Prediction Enabled"
-        } else {
-            "Try Edit Prediction"
-        };
-
         h_flex()
             .size_full()
             .bg(cx.theme().colors().editor_background)
@@ -111,11 +99,11 @@ impl Render for WelcomePage {
                                 h_flex()
                                     .w_full()
                                     .justify_center()
-                                    .child(Headline::new("Welcome to Zed")),
+                                    .child(Headline::new("Welcome to Pluma")),
                             )
                             .child(
                                 h_flex().w_full().justify_center().child(
-                                    Label::new("The editor for what's next")
+                                    Label::new("Creating Writing Superpowers")
                                         .color(Color::Muted)
                                         .italic(),
                                 ),
@@ -152,42 +140,6 @@ impl Render for WelcomePage {
                                                     })
                                                     .ok();
                                             })),
-                                    )
-                                    .child(
-                                        Button::new("choose-keymap", "Choose a Keymap")
-                                            .icon(IconName::Keyboard)
-                                            .icon_size(IconSize::XSmall)
-                                            .icon_color(Color::Muted)
-                                            .icon_position(IconPosition::Start)
-                                            .on_click(cx.listener(|this, _, window, cx| {
-                                                telemetry::event!("Welcome Keymap Changed");
-                                                this.workspace
-                                                    .update(cx, |workspace, cx| {
-                                                        base_keymap_picker::toggle(
-                                                            workspace,
-                                                            &Default::default(),
-                                                            window, cx,
-                                                        )
-                                                    })
-                                                    .ok();
-                                            })),
-                                    )
-                                    .child(
-                                        Button::new(
-                                            "try-zed-edit-prediction",
-                                            edit_prediction_label,
-                                        )
-                                        .disabled(edit_prediction_provider_is_zed)
-                                        .icon(IconName::ZedPredict)
-                                        .icon_size(IconSize::XSmall)
-                                        .icon_color(Color::Muted)
-                                        .icon_position(IconPosition::Start)
-                                        .on_click(
-                                            cx.listener(|_, _, window, cx| {
-                                                telemetry::event!("Welcome Screen Try Edit Prediction clicked");
-                                                window.dispatch_action(zed_actions::OpenZedPredictOnboarding.boxed_clone(), cx);
-                                            }),
-                                        ),
                                     )
                                     .child(
                                         Button::new("edit settings", "Edit Settings")
@@ -240,110 +192,6 @@ impl Render for WelcomePage {
                                                 cx.open_url(DOCS_URL);
                                             })),
                                     )
-                                    .child(
-                                        Button::new("explore-extensions", "Explore Extensions")
-                                            .icon(IconName::Blocks)
-                                            .icon_size(IconSize::XSmall)
-                                            .icon_color(Color::Muted)
-                                            .icon_position(IconPosition::Start)
-                                            .on_click(cx.listener(|_, _, window, cx| {
-                                                telemetry::event!("Welcome Extensions Page Opened");
-                                                window.dispatch_action(Box::new(
-                                                    zed_actions::Extensions::default(),
-                                                ), cx);
-                                            })),
-                                    )
-                            ),
-                    )
-                    .child(
-                        v_container()
-                            .px_2()
-                            .gap_2()
-                            .child(
-                                h_flex()
-                                    .justify_between()
-                                    .child(
-                                        CheckboxWithLabel::new(
-                                            "enable-vim",
-                                            Label::new("Enable Vim Mode"),
-                                            if VimModeSetting::get_global(cx).0 {
-                                                ui::ToggleState::Selected
-                                            } else {
-                                                ui::ToggleState::Unselected
-                                            },
-                                            cx.listener(move |this, selection, _window, cx| {
-                                                telemetry::event!("Welcome Vim Mode Toggled");
-                                                this.update_settings::<VimModeSetting>(
-                                                    selection,
-                                                    cx,
-                                                    |setting, value| *setting = Some(value),
-                                                );
-                                            }),
-                                        )
-                                        .fill()
-                                        .elevation(ElevationIndex::ElevatedSurface),
-                                    )
-                                    .child(
-                                        IconButton::new("vim-mode", IconName::Info)
-                                            .icon_size(IconSize::XSmall)
-                                            .icon_color(Color::Muted)
-                                            .tooltip(
-                                                Tooltip::text(
-                                                    "You can also toggle Vim Mode via the command palette or Editor Controls menu.")
-                                            ),
-                                    ),
-                            )
-                            .child(
-                                CheckboxWithLabel::new(
-                                    "enable-crash",
-                                    Label::new("Send Crash Reports"),
-                                    if TelemetrySettings::get_global(cx).diagnostics {
-                                        ui::ToggleState::Selected
-                                    } else {
-                                        ui::ToggleState::Unselected
-                                    },
-                                    cx.listener(move |this, selection, _window, cx| {
-                                        telemetry::event!("Welcome Diagnostic Telemetry Toggled");
-                                        this.update_settings::<TelemetrySettings>(selection, cx, {
-                                            move |settings, value| {
-                                                settings.diagnostics = Some(value);
-                                                telemetry::event!(
-                                                    "Settings Changed",
-                                                    setting = "diagnostic telemetry",
-                                                    value
-                                                );
-                                            }
-                                        });
-                                    }),
-                                )
-                                .fill()
-                                .elevation(ElevationIndex::ElevatedSurface),
-                            )
-                            .child(
-                                CheckboxWithLabel::new(
-                                    "enable-telemetry",
-                                    Label::new("Send Telemetry"),
-                                    if TelemetrySettings::get_global(cx).metrics {
-                                        ui::ToggleState::Selected
-                                    } else {
-                                        ui::ToggleState::Unselected
-                                    },
-                                    cx.listener(move |this, selection, _window, cx| {
-                                        telemetry::event!("Welcome Metric Telemetry Toggled");
-                                        this.update_settings::<TelemetrySettings>(selection, cx, {
-                                            move |settings, value| {
-                                                settings.metrics = Some(value);
-                                                telemetry::event!(
-                                                    "Settings Changed",
-                                                    setting = "metric telemetry",
-                                                    value
-                                                );
-                                            }
-                                        });
-                                    }),
-                                )
-                                .fill()
-                                .elevation(ElevationIndex::ElevatedSurface),
                             ),
                     ),
             )
@@ -375,27 +223,6 @@ impl WelcomePage {
             .pl_1()
             .font_buffer(cx)
             .text_color(Color::Muted.color(cx))
-    }
-
-    fn update_settings<T: Settings>(
-        &mut self,
-        selection: &ToggleState,
-        cx: &mut Context<Self>,
-        callback: impl 'static + Send + Fn(&mut T::FileContent, bool),
-    ) {
-        if let Some(workspace) = self.workspace.upgrade() {
-            let fs = workspace.read(cx).app_state().fs.clone();
-            let selection = *selection;
-            settings::update_settings_file::<T>(fs, cx, move |settings, _| {
-                let value = match selection {
-                    ToggleState::Unselected => false,
-                    ToggleState::Selected => true,
-                    _ => return,
-                };
-
-                callback(settings, value)
-            });
-        }
     }
 }
 

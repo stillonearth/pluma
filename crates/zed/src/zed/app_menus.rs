@@ -1,6 +1,6 @@
-use collab_ui::collab_panel;
+// use collab_ui::collab_panel;
 use gpui::{Menu, MenuItem, OsAction};
-use terminal_view::terminal_panel;
+// use terminal_view::terminal_panel;
 
 pub fn app_menus() -> Vec<Menu> {
     use zed_actions::Quit;
@@ -9,7 +9,7 @@ pub fn app_menus() -> Vec<Menu> {
         Menu {
             name: "Zed".into(),
             items: vec![
-                MenuItem::action("About Zed…", zed_actions::About),
+                MenuItem::action("About Pluma…", zed_actions::About),
                 MenuItem::action("Check for Updates", auto_update::Check),
                 MenuItem::separator(),
                 MenuItem::submenu(Menu {
@@ -35,8 +35,8 @@ pub fn app_menus() -> Vec<Menu> {
                     items: vec![],
                 }),
                 MenuItem::separator(),
-                MenuItem::action("Extensions", zed_actions::Extensions::default()),
-                MenuItem::action("Install CLI", install_cli::Install),
+                // MenuItem::action("Extensions", zed_actions::Extensions::default()),
+                // MenuItem::action("Install CLI", install_cli::Install),
                 MenuItem::separator(),
                 #[cfg(target_os = "macos")]
                 MenuItem::action("Hide Zed", super::Hide),
@@ -45,7 +45,7 @@ pub fn app_menus() -> Vec<Menu> {
                 #[cfg(target_os = "macos")]
                 MenuItem::action("Show All", super::ShowAll),
                 MenuItem::separator(),
-                MenuItem::action("Quit Zed", Quit),
+                MenuItem::action("Quit Pluma", Quit),
             ],
         },
         Menu {
@@ -170,61 +170,6 @@ pub fn app_menus() -> Vec<Menu> {
                 }),
                 MenuItem::separator(),
                 MenuItem::action("Project Panel", project_panel::ToggleFocus),
-                MenuItem::action("Outline Panel", outline_panel::ToggleFocus),
-                MenuItem::action("Collab Panel", collab_panel::ToggleFocus),
-                MenuItem::action("Terminal Panel", terminal_panel::ToggleFocus),
-                MenuItem::separator(),
-                MenuItem::action("Diagnostics", diagnostics::Deploy),
-                MenuItem::separator(),
-            ],
-        },
-        Menu {
-            name: "Go".into(),
-            items: vec![
-                MenuItem::action("Back", workspace::GoBack),
-                MenuItem::action("Forward", workspace::GoForward),
-                MenuItem::separator(),
-                MenuItem::action("Command Palette...", zed_actions::command_palette::Toggle),
-                MenuItem::separator(),
-                MenuItem::action("Go to File...", workspace::ToggleFileFinder::default()),
-                // MenuItem::action("Go to Symbol in Project", project_symbols::Toggle),
-                MenuItem::action(
-                    "Go to Symbol in Editor...",
-                    zed_actions::outline::ToggleOutline,
-                ),
-                MenuItem::action("Go to Line/Column...", editor::actions::ToggleGoToLine),
-                MenuItem::separator(),
-                MenuItem::action("Go to Definition", editor::actions::GoToDefinition),
-                MenuItem::action("Go to Declaration", editor::actions::GoToDeclaration),
-                MenuItem::action("Go to Type Definition", editor::actions::GoToTypeDefinition),
-                MenuItem::action("Find All References", editor::actions::FindAllReferences),
-                MenuItem::separator(),
-                MenuItem::action("Next Problem", editor::actions::GoToDiagnostic),
-                MenuItem::action("Previous Problem", editor::actions::GoToPreviousDiagnostic),
-            ],
-        },
-        Menu {
-            name: "Run".into(),
-            items: vec![
-                MenuItem::action(
-                    "Spawn Task",
-                    zed_actions::Spawn::ViaModal {
-                        reveal_target: None,
-                    },
-                ),
-                MenuItem::action("Start Debugger", debugger_ui::Start),
-                MenuItem::separator(),
-                MenuItem::action("Edit tasks.json...", crate::zed::OpenProjectTasks),
-                MenuItem::action("Edit debug.json...", zed_actions::OpenProjectDebugTasks),
-                MenuItem::separator(),
-                MenuItem::action("Continue", debugger_ui::Continue),
-                MenuItem::action("Step Over", debugger_ui::StepOver),
-                MenuItem::action("Step Into", debugger_ui::StepInto),
-                MenuItem::action("Step Out", debugger_ui::StepOut),
-                MenuItem::separator(),
-                MenuItem::action("Toggle Breakpoint", editor::actions::ToggleBreakpoint),
-                MenuItem::action("Edit Breakpoint", editor::actions::EditLogBreakpoint),
-                MenuItem::action("Clear all Breakpoints", debugger_ui::ClearAllBreakpoints),
             ],
         },
         Menu {
@@ -242,27 +187,19 @@ pub fn app_menus() -> Vec<Menu> {
                     "View Release Notes",
                     auto_update_ui::ViewReleaseNotesLocally,
                 ),
-                MenuItem::action("View Telemetry", zed_actions::OpenTelemetryLog),
                 MenuItem::action("View Dependency Licenses", zed_actions::OpenLicenses),
                 MenuItem::action("Show Welcome", workspace::Welcome),
-                MenuItem::action("Give Feedback...", zed_actions::feedback::GiveFeedback),
                 MenuItem::separator(),
                 MenuItem::action(
                     "Documentation",
                     super::OpenBrowser {
-                        url: "https://zed.dev/docs".into(),
+                        url: "https://elpluma.dev/docs".into(),
                     },
                 ),
                 MenuItem::action(
-                    "Zed Twitter",
+                    "Pluma Twitter",
                     super::OpenBrowser {
                         url: "https://twitter.com/zeddotdev".into(),
-                    },
-                ),
-                MenuItem::action(
-                    "Join the Team",
-                    super::OpenBrowser {
-                        url: "https://zed.dev/jobs".into(),
                     },
                 ),
             ],

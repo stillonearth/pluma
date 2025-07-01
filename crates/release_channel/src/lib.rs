@@ -1,4 +1,4 @@
-//! Provides constructs for the Zed app version and release channel.
+//! Provides constructs for the Pluma app version and release channel.
 
 #![deny(missing_docs)]
 
@@ -27,14 +27,14 @@ pub static RELEASE_CHANNEL: LazyLock<ReleaseChannel> =
 #[cfg(target_os = "windows")]
 pub fn app_identifier() -> &'static str {
     match *RELEASE_CHANNEL {
-        ReleaseChannel::Dev => "Zed-Editor-Dev",
-        ReleaseChannel::Nightly => "Zed-Editor-Nightly",
-        ReleaseChannel::Preview => "Zed-Editor-Preview",
-        ReleaseChannel::Stable => "Zed-Editor-Stable",
+        ReleaseChannel::Dev => "Pluma-Editor-Dev",
+        ReleaseChannel::Nightly => "Pluma-Editor-Nightly",
+        ReleaseChannel::Preview => "Pluma-Editor-Preview",
+        ReleaseChannel::Stable => "Pluma-Editor-Stable",
     }
 }
 
-/// The Git commit SHA that Zed was built at.
+/// The Git commit SHA that Pluma was built at.
 #[derive(Clone, Eq, Debug, PartialEq)]
 pub struct AppCommitSha(String);
 
@@ -74,7 +74,7 @@ struct GlobalAppVersion(SemanticVersion);
 
 impl Global for GlobalAppVersion {}
 
-/// The version of Zed.
+/// The version of Pluma.
 pub struct AppVersion;
 
 impl AppVersion {
@@ -97,12 +97,12 @@ impl AppVersion {
     }
 }
 
-/// A Zed release channel.
+/// A Pluma release channel.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub enum ReleaseChannel {
     /// The development release channel.
     ///
-    /// Used for local debug builds of Zed.
+    /// Used for local debug builds of Pluma.
     #[default]
     Dev,
 
@@ -146,10 +146,10 @@ impl ReleaseChannel {
     /// Returns the display name for this [`ReleaseChannel`].
     pub fn display_name(&self) -> &'static str {
         match self {
-            ReleaseChannel::Dev => "Zed Dev",
-            ReleaseChannel::Nightly => "Zed Nightly",
-            ReleaseChannel::Preview => "Zed Preview",
-            ReleaseChannel::Stable => "Zed",
+            ReleaseChannel::Dev => "Pluma Dev",
+            ReleaseChannel::Nightly => "Pluma Nightly",
+            ReleaseChannel::Preview => "Pluma Preview",
+            ReleaseChannel::Stable => "Pluma",
         }
     }
 
@@ -165,13 +165,13 @@ impl ReleaseChannel {
 
     /// Returns the application ID that's used by Wayland as application ID
     /// and WM_CLASS on X11.
-    /// This also has to match the bundle identifier for Zed on macOS.
+    /// This also has to match the bundle identifier for Pluma on macOS.
     pub fn app_id(&self) -> &'static str {
         match self {
-            ReleaseChannel::Dev => "dev.zed.Zed-Dev",
-            ReleaseChannel::Nightly => "dev.zed.Zed-Nightly",
-            ReleaseChannel::Preview => "dev.zed.Zed-Preview",
-            ReleaseChannel::Stable => "dev.zed.Zed",
+            ReleaseChannel::Dev => "dev.zed.Pluma-Dev",
+            ReleaseChannel::Nightly => "dev.zed.Pluma-Nightly",
+            ReleaseChannel::Preview => "dev.zed.Pluma-Preview",
+            ReleaseChannel::Stable => "dev.zed.Pluma",
         }
     }
 

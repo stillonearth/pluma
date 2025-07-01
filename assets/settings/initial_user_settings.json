@@ -7,11 +7,30 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "telemetry": {
+    "metrics": false,
+    "diagnostics": false
+  },
   "ui_font_size": 16,
   "buffer_font_size": 16,
   "theme": {
     "mode": "system",
     "light": "One Light",
     "dark": "One Dark"
+  },
+  "git_panel": {
+    "button": false
+  },
+  "collaboration_panel": {
+    "button": false
+  },
+  "outline_panel": {
+    "button": false
+  },
+  "debugger": {
+    "button": false
+  },
+  "terminal": {
+    "button": false
   }
 }

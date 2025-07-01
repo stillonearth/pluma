@@ -349,15 +349,15 @@
     // Whether to show the branch icon beside branch switcher in the titlebar.
     "show_branch_icon": false,
     // Whether to show the branch name button in the titlebar.
-    "show_branch_name": true,
+    "show_branch_name": false,
     // Whether to show the project host and name in the titlebar.
-    "show_project_items": true,
+    "show_project_items": false,
     // Whether to show onboarding banners in the titlebar.
     "show_onboarding_banner": true,
     // Whether to show user picture in the titlebar.
-    "show_user_picture": true,
+    "show_user_picture": false,
     // Whether to show the sign in button in the titlebar.
-    "show_sign_in": true
+    "show_sign_in": false
   },
   // Scrollbar related settings
   "scrollbar": {
