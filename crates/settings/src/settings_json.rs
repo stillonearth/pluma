@@ -1,55 +1,24 @@
 use anyhow::Result;
 use gpui::App;
-use schemars::{JsonSchema, Schema};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use std::{ops::Range, sync::LazyLock};
 use tree_sitter::{Query, StreamingIterator as _};
 use util::RangeExt;
 
+/// Parameters that are used when generating some JSON schemas at runtime.
 pub struct SettingsJsonSchemaParams<'a> {
     pub language_names: &'a [String],
     pub font_names: &'a [String],
 }
 
+/// Value registered which specifies JSON schemas that are generated at runtime.
 pub struct ParameterizedJsonSchema {
     pub add_and_get_ref:
         fn(&mut schemars::SchemaGenerator, &SettingsJsonSchemaParams, &App) -> schemars::Schema,
 }
 
 inventory::collect!(ParameterizedJsonSchema);
-
-pub fn replace_subschema<T: JsonSchema>(
-    generator: &mut schemars::SchemaGenerator,
-    schema: schemars::Schema,
-) -> schemars::Schema {
-    const DEFINITIONS_PATH: &str = "#/definitions/";
-    // The key in definitions may not match T::schema_name() if multiple types have the same name.
-    // This is a workaround for there being no straightforward way to get the key used for a type -
-    // see https://github.com/GREsau/schemars/issues/449
-    let ref_schema = generator.subschema_for::<T>();
-    if let Some(serde_json::Value::String(definition_pointer)) = ref_schema.get("$ref") {
-        if let Some(definition_name) = definition_pointer.strip_prefix(DEFINITIONS_PATH) {
-            generator
-                .definitions_mut()
-                .insert(definition_name.to_string(), schema.to_value());
-            return ref_schema;
-        } else {
-            log::error!(
-                "bug: expected `$ref` field to start with {DEFINITIONS_PATH}, \
-                got {definition_pointer}"
-            );
-        }
-    } else {
-        log::error!("bug: expected `$ref` field in result of `subschema_for`");
-    }
-    // fallback on just using the schema name, which could collide.
-    let schema_name = T::schema_name();
-    generator
-        .definitions_mut()
-        .insert(schema_name.to_string(), schema.to_value());
-    Schema::new_ref(format!("{DEFINITIONS_PATH}{schema_name}"))
-}
 
 pub fn update_value_in_json_text<'a>(
     text: &mut String,

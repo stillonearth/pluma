@@ -6,7 +6,7 @@ use futures::{FutureExt, StreamExt, channel::mpsc, future::LocalBoxFuture};
 use gpui::{App, AsyncApp, BorrowAppContext, Global, Task, UpdateGlobal};
 
 use paths::{EDITORCONFIG_NAME, local_settings_file_relative_path, task_file_name};
-use schemars::{JsonSchema, json_schema};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use smallvec::SmallVec;
@@ -18,8 +18,10 @@ use std::{
     str::{self, FromStr},
     sync::Arc,
 };
-
-use util::{ResultExt as _, merge_non_null_json_value_into};
+use util::{
+    ResultExt as _, merge_non_null_json_value_into,
+    schemars::{DefaultDenyUnknownFields, add_new_subschema},
+};
 
 pub type EditorconfigProperties = ec4rs::Properties;
 
@@ -618,7 +620,7 @@ impl SettingsStore {
         ));
     }
 
-    fn json_tab_size(&self) -> usize {
+    pub fn json_tab_size(&self) -> usize {
         const DEFAULT_JSON_TAB_SIZE: usize = 2;
 
         if let Some((setting_type_id, callback)) = &self.tab_size_callback {
@@ -864,7 +866,9 @@ impl SettingsStore {
     }
 
     pub fn json_schema(&self, schema_params: &SettingsJsonSchemaParams, cx: &App) -> Value {
-        let mut generator = schemars::generate::SchemaSettings::draft07().into_generator();
+        let mut generator = schemars::generate::SchemaSettings::draft2019_09()
+            .with_transform(DefaultDenyUnknownFields)
+            .into_generator();
         let mut combined_schema = json!({
             "type": "object",
             "properties": {}
@@ -988,44 +992,60 @@ impl SettingsStore {
             }
         }
 
+        // add schemas which are determined at runtime
         for parameterized_json_schema in inventory::iter::<ParameterizedJsonSchema>() {
             (parameterized_json_schema.add_and_get_ref)(&mut generator, schema_params, cx);
         }
 
+        // add merged settings schema to the definitions
         const ZED_SETTINGS: &str = "ZedSettings";
-        let old_zed_settings_definition = generator
-            .definitions_mut()
-            .insert(ZED_SETTINGS.to_string(), combined_schema);
-        assert_eq!(old_zed_settings_definition, None);
-        let zed_settings_ref = schemars::Schema::new_ref(format!("#/definitions/{ZED_SETTINGS}"));
+        let zed_settings_ref = add_new_subschema(&mut generator, ZED_SETTINGS, combined_schema);
 
-        let mut root_schema = if let Some(meta_schema) = generator.settings().meta_schema.as_ref() {
-            json_schema!({ "$schema": meta_schema.to_string() })
-        } else {
-            json_schema!({})
-        };
+        // add `ZedReleaseStageSettings` which is the same as `ZedSettings` except that unknown
+        // fields are rejected.
+        let mut zed_release_stage_settings = zed_settings_ref.clone();
+        zed_release_stage_settings.insert("unevaluatedProperties".to_string(), false.into());
+        let zed_release_stage_settings_ref = add_new_subschema(
+            &mut generator,
+            "ZedReleaseStageSettings",
+            zed_release_stage_settings.to_value(),
+        );
 
-        // settings file contents matches ZedSettings + overrides for each release stage
-        root_schema.insert(
-            "allOf".to_string(),
-            json!([
+        // Remove `"additionalProperties": false` added by `DefaultDenyUnknownFields` so that
+        // unknown fields can be handled by the root schema and `ZedReleaseStageSettings`.
+        let mut definitions = generator.take_definitions(true);
+        definitions
+            .get_mut(ZED_SETTINGS)
+            .unwrap()
+            .as_object_mut()
+            .unwrap()
+            .remove("additionalProperties");
+
+        let meta_schema = generator
+            .settings()
+            .meta_schema
+            .as_ref()
+            .expect("meta_schema should be present in schemars settings")
+            .to_string();
+
+        json!({
+            "$schema": meta_schema,
+            "title": "Zed Settings",
+            "unevaluatedProperties": false,
+            // ZedSettings + settings overrides for each release stage
+            "allOf": [
                 zed_settings_ref,
                 {
                     "properties": {
-                        "dev": zed_settings_ref,
-                        "nightly": zed_settings_ref,
-                        "stable": zed_settings_ref,
-                        "preview": zed_settings_ref,
+                        "dev": zed_release_stage_settings_ref,
+                        "nightly": zed_release_stage_settings_ref,
+                        "stable": zed_release_stage_settings_ref,
+                        "preview": zed_release_stage_settings_ref,
                     }
                 }
-            ]),
-        );
-        root_schema.insert(
-            "definitions".to_string(),
-            generator.take_definitions(true).into(),
-        );
-
-        root_schema.to_value()
+            ],
+            "$defs": definitions,
+        })
     }
 
     fn recompute_values(
@@ -1934,7 +1954,6 @@ mod tests {
     }
 
     #[derive(Default, Clone, Serialize, Deserialize, JsonSchema)]
-    #[schemars(deny_unknown_fields)]
     struct UserSettingsContent {
         name: Option<String>,
         age: Option<u32>,
@@ -1977,7 +1996,6 @@ mod tests {
     }
 
     #[derive(Clone, Default, Serialize, Deserialize, JsonSchema)]
-    #[schemars(deny_unknown_fields)]
     struct MultiKeySettingsJson {
         key1: Option<String>,
         key2: Option<String>,
@@ -2016,7 +2034,6 @@ mod tests {
     }
 
     #[derive(Clone, Default, Debug, Serialize, Deserialize, JsonSchema)]
-    #[schemars(deny_unknown_fields)]
     struct JournalSettingsJson {
         pub path: Option<String>,
         pub hour_format: Option<HourFormat>,
@@ -2111,7 +2128,6 @@ mod tests {
     }
 
     #[derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema)]
-    #[schemars(deny_unknown_fields)]
     struct LanguageSettingEntry {
         language_setting_1: Option<bool>,
         language_setting_2: Option<bool>,

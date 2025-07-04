@@ -4,6 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
+use util::schemars::DefaultDenyUnknownFields;
 use util::serde::default_true;
 use util::{ResultExt, truncate_and_remove_front};
 
@@ -115,7 +116,8 @@ pub struct TaskTemplates(pub Vec<TaskTemplate>);
 impl TaskTemplates {
     /// Generates JSON schema of Tasks JSON template format.
     pub fn generate_json_schema() -> serde_json_lenient::Value {
-        let schema = schemars::generate::SchemaSettings::draft07()
+        let schema = schemars::generate::SchemaSettings::draft2019_09()
+            .with_transform(DefaultDenyUnknownFields)
             .into_generator()
             .root_schema_for::<Self>();
 
