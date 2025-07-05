@@ -16637,6 +16637,19 @@ impl Editor {
         }
     }
 
+    pub fn toggle_breadcrumbs(
+        &mut self,
+        _: &ToggleMinimap,
+        window: &mut Window,
+        cx: &mut Context<Editor>,
+    ) {
+        self.show_breadcrumbs = !self.show_breadcrumbs;
+
+        // if self.supports_minimap(cx) {
+        //     self.set_minimap_visibility(self.minimap_visibility.toggle_visibility(), window, cx);
+        // }
+    }
+
     fn refresh_inline_diagnostics(
         &mut self,
         debounce: bool,

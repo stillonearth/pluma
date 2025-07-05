@@ -182,6 +182,11 @@ members = [
     "crates/zlog_settings",
 
     #
+    # Pluma
+    #
+    "crates/writer_mode",
+
+    #
     # Extensions
     #
 
@@ -393,6 +398,11 @@ zed_actions = { path = "crates/zed_actions" }
 zeta = { path = "crates/zeta" }
 zlog = { path = "crates/zlog" }
 zlog_settings = { path = "crates/zlog_settings" }
+
+#
+# Pluma
+#
+writer_mode = { path = "crates/writer_mode" }
 
 #
 # External crates
@@ -772,7 +782,6 @@ todo = "deny"
 # Motivation: We use `vec![a..b]` a lot when dealing with ranges in text, so
 # warning on this rule produces a lot of noise.
 single_range_in_vec_init = "allow"
-
 # These are all of the rules that currently have violations in the Zed
 # codebase.
 #

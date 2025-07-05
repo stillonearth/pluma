@@ -182,6 +182,15 @@ pub struct DeploySearch {
     pub excluded_files: Option<String>,
 }
 
+/// Toggles Writer Mode: makes only editor visible, hiding all other interface items
+#[derive(Clone, PartialEq, Debug, Deserialize, JsonSchema, Default, Action)]
+#[action(namespace = pane)]
+#[serde(deny_unknown_fields)]
+pub struct WriterMode {
+    #[serde(default)]
+    pub focus: bool,
+}
+
 actions!(
     pane,
     [
@@ -686,6 +695,10 @@ impl Pane {
         F: 'static + Fn(&Window, &mut Context<Pane>) -> bool,
     {
         self.should_display_tab_bar = Rc::new(should_display_tab_bar);
+    }
+
+    pub fn get_should_display_tab_bar(&self) -> Rc<dyn Fn(&Window, &mut Context<Pane>) -> bool> {
+        Rc::clone(&self.should_display_tab_bar)
     }
 
     pub fn set_can_split(
@@ -2604,7 +2617,7 @@ impl Pane {
                             ))
                             .separator()
                             .item(ContextMenuItem::Entry(
-                                ContextMenuEntry::new("Close Left")
+                                ContextMenuEntry::new("Close Left df")
                                     .action(Box::new(close_items_to_the_left_action.clone()))
                                     .disabled(!has_items_to_left)
                                     .handler(window.handler_for(&pane, move |pane, window, cx| {

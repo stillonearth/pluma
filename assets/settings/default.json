@@ -447,6 +447,8 @@
     // Maximum number of columns to display in the minimap.
     "max_width_columns": 80
   },
+  // Enable Writer mode
+  "writer_mode": true,
   // Enable middle-click paste on Linux.
   "middle_click_paste": true,
   // What to do when multibuffer is double clicked in some of its excerpts

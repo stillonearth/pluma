@@ -325,25 +325,21 @@ pub fn initialize_workspace(
         });
 
         let search_button = cx.new(|_| search::search_status_button::SearchButton::new());
-        // let diagnostic_summary =
-        //     cx.new(|cx| diagnostics::items::DiagnosticIndicator::new(workspace, cx));
+        let writer_mode_button =
+            cx.new(|_| writer_mode::writer_mode_status_button::WriterModeButton::new());
+
         let activity_indicator = activity_indicator::ActivityIndicator::new(
             workspace,
             workspace.project().read(cx).languages().clone(),
             window,
             cx,
         );
-        // let active_buffer_language =
-        //     cx.new(|_| language_selector::ActiveBufferLanguage::new(workspace));
-        // let active_toolchain_language =
-        //     cx.new(|cx| toolchain_selector::ActiveToolchain::new(workspace, window, cx));
-        // let vim_mode_indicator = cx.new(|cx| vim::ModeIndicator::new(window, cx));
+
         let image_info = cx.new(|_cx| ImageInfo::new(workspace));
 
         let lsp_tool_menu_handle: PopoverMenuHandle<Picker<LspPickerDelegate>> =
             PopoverMenuHandle::default();
-        // let lsp_tool =
-        //     cx.new(|cx| LspTool::new(workspace, lsp_tool_menu_handle.clone(), window, cx));
+
         workspace.register_action({
             move |_, _: &lsp_tool::ToggleMenu, window, cx| {
                 lsp_tool_menu_handle.toggle(window, cx);
@@ -354,13 +350,11 @@ pub fn initialize_workspace(
             cx.new(|_| go_to_line::cursor_position::CursorPosition::new(workspace));
         workspace.status_bar().update(cx, |status_bar, cx| {
             status_bar.add_left_item(search_button, window, cx);
-            // status_bar.add_left_item(lsp_tool, window, cx);
-            // status_bar.add_left_item(diagnostic_summary, window, cx);
+            status_bar.add_left_item(writer_mode_button, window, cx);
+
             status_bar.add_left_item(activity_indicator, window, cx);
             status_bar.add_right_item(edit_prediction_button, window, cx);
-            // status_bar.add_right_item(active_buffer_language, window, cx);
-            // status_bar.add_right_item(active_toolchain_language, window, cx);
-            // status_bar.add_right_item(vim_mode_indicator, window, cx);
+
             status_bar.add_right_item(cursor_position, window, cx);
             status_bar.add_right_item(image_info, window, cx);
         });

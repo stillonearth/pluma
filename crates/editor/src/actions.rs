@@ -681,6 +681,8 @@ actions!(
         ToggleLineNumbers,
         /// Toggles the minimap display.
         ToggleMinimap,
+        /// Toggles the minimap display.
+        ToggleBreadcrumbs,
         /// Swaps the start and end of the current selection.
         SwapSelectionEnds,
         /// Sets a mark at the current position.
