@@ -1,16 +1,10 @@
 use crate::{
-    Copy, CopyAndTrim, CopyPermalinkToLine, Cut, DisplayPoint, DisplaySnapshot, Editor,
-    EvaluateSelectedText, FindAllReferences, GoToDeclaration, GoToDefinition, GoToImplementation,
-    GoToTypeDefinition, Paste, Rename, RevealInFileManager, SelectMode, SelectionEffects,
-    SelectionExt, ToDisplayPoint, ToggleCodeActions,
-    actions::{Format, FormatSelections},
+    Copy, CopyAndTrim, Cut, DisplayPoint, DisplaySnapshot, Editor, Paste, RevealInFileManager,
+    SelectMode, SelectionEffects, SelectionExt, ToDisplayPoint,
     selections_collection::SelectionsCollection,
 };
-use gpui::prelude::FluentBuilder;
 use gpui::{Context, DismissEvent, Entity, Focusable as _, Pixels, Point, Subscription, Window};
 use std::ops::Range;
-use text::PointUtf16;
-use workspace::OpenInTerminal;
 
 #[derive(Debug)]
 pub enum MenuPosition {
@@ -185,49 +179,10 @@ pub fn deploy_context_menu(
 
         let focus = window.focused(cx);
         let has_reveal_target = editor.target_file(cx).is_some();
-        let has_selections = editor
-            .selections
-            .all::<PointUtf16>(cx)
-            .into_iter()
-            .any(|s| !s.is_empty());
-        let has_git_repo = anchor.buffer_id.is_some_and(|buffer_id| {
-            project
-                .read(cx)
-                .git_store()
-                .read(cx)
-                .repository_and_path_for_buffer_id(buffer_id, cx)
-                .is_some()
-        });
-
-        let evaluate_selection = window.is_action_available(&EvaluateSelectedText, cx);
 
         ui::ContextMenu::build(window, cx, |menu, _window, _cx| {
             let builder = menu
                 .on_blur_subscription(Subscription::new(|| {}))
-                .when(evaluate_selection && has_selections, |builder| {
-                    builder
-                        .action("Evaluate Selection", Box::new(EvaluateSelectedText))
-                        .separator()
-                })
-                .action("Go to Definition", Box::new(GoToDefinition))
-                .action("Go to Declaration", Box::new(GoToDeclaration))
-                .action("Go to Type Definition", Box::new(GoToTypeDefinition))
-                .action("Go to Implementation", Box::new(GoToImplementation))
-                .action("Find All References", Box::new(FindAllReferences))
-                .separator()
-                .action("Rename Symbol", Box::new(Rename))
-                .action("Format Buffer", Box::new(Format))
-                .when(has_selections, |cx| {
-                    cx.action("Format Selections", Box::new(FormatSelections))
-                })
-                .action(
-                    "Show Code Actions",
-                    Box::new(ToggleCodeActions {
-                        deployed_from: None,
-                        quick_launch: false,
-                    }),
-                )
-                .separator()
                 .action("Cut", Box::new(Cut))
                 .action("Copy", Box::new(Copy))
                 .action("Copy and Trim", Box::new(CopyAndTrim))
@@ -241,16 +196,6 @@ pub fn deploy_context_menu(
                         "Reveal in File Manager"
                     },
                     Box::new(RevealInFileManager),
-                )
-                .action_disabled_when(
-                    !has_reveal_target,
-                    "Open in Terminal",
-                    Box::new(OpenInTerminal),
-                )
-                .action_disabled_when(
-                    !has_git_repo,
-                    "Copy Permalink",
-                    Box::new(CopyPermalinkToLine),
                 );
             match focus {
                 Some(focus) => builder.context(focus),
