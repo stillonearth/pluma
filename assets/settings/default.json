@@ -216,7 +216,7 @@
   "lsp_highlight_debounce": 75,
   // Whether to pop the completions menu while typing in an editor without
   // explicitly requesting it.
-  "show_completions_on_input": true,
+  "show_completions_on_input": false,
   // Whether to display inline and alongside documentation for items in the
   // completions menu
   "show_completion_documentation": true,
@@ -226,7 +226,7 @@
   // If `auto_signature_help` is enabled, this setting will be treated as enabled also.
   "show_signature_help_after_edits": false,
   // Whether to show code action button at start of buffer line.
-  "inline_code_actions": true,
+  "inline_code_actions": false,
   // Whether to allow drag and drop text selection in buffer.
   "drag_and_drop_selection": true,
   // What to do when go to definition yields no results.
@@ -1579,6 +1579,7 @@
       "format_on_save": "off",
       "use_on_type_format": false,
       "allow_rewrap": "anywhere",
+      "show_inline_completions": false,
       "soft_wrap": "editor_width",
       "prettier": {
         "allowed": true
