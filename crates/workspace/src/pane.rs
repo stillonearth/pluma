@@ -350,6 +350,7 @@ pub struct Pane {
         Option<Arc<dyn Fn(&mut Self, &dyn Any, &mut Window, &mut Context<Self>) -> bool>>,
     can_toggle_zoom: bool,
     should_display_tab_bar: Rc<dyn Fn(&Window, &mut Context<Pane>) -> bool>,
+    should_display_toolbar: Rc<dyn Fn(&Window, &mut Context<Pane>) -> bool>,
     render_tab_bar_buttons: Rc<
         dyn Fn(
             &mut Pane,
@@ -499,6 +500,7 @@ impl Pane {
             can_split_predicate: None,
             can_toggle_zoom: true,
             should_display_tab_bar: Rc::new(|_, cx| TabBarSettings::get_global(cx).show),
+            should_display_toolbar: Rc::new(|_, _| true),
             render_tab_bar_buttons: Rc::new(default_render_tab_bar_buttons),
             render_tab_bar: Rc::new(Self::render_tab_bar),
             show_tab_bar_buttons: TabBarSettings::get_global(cx).show_tab_bar_buttons,
@@ -695,6 +697,17 @@ impl Pane {
         F: 'static + Fn(&Window, &mut Context<Pane>) -> bool,
     {
         self.should_display_tab_bar = Rc::new(should_display_tab_bar);
+    }
+
+    pub fn get_should_display_toolbar(&self) -> Rc<dyn Fn(&Window, &mut Context<Pane>) -> bool> {
+        Rc::clone(&self.should_display_toolbar)
+    }
+
+    pub fn set_should_display_toolbar<F>(&mut self, should_display_toolbar: F)
+    where
+        F: 'static + Fn(&Window, &mut Context<Pane>) -> bool,
+    {
+        self.should_display_toolbar = Rc::new(should_display_toolbar);
     }
 
     pub fn get_should_display_tab_bar(&self) -> Rc<dyn Fn(&Window, &mut Context<Pane>) -> bool> {
@@ -3418,6 +3431,10 @@ impl Render for Pane {
 
         let should_display_tab_bar = self.should_display_tab_bar.clone();
         let display_tab_bar = should_display_tab_bar(window, cx);
+
+        let should_display_toolbar = self.should_display_toolbar.clone();
+        let display_toolbar = should_display_toolbar(window, cx);
+
         let Some(project) = self.project.upgrade() else {
             return div().track_focus(&self.focus_handle(cx));
         };
@@ -3590,7 +3607,7 @@ impl Render for Pane {
                                 .v_flex()
                                 .size_full()
                                 .overflow_hidden()
-                                .child(self.toolbar.clone())
+                                .when(display_toolbar, |pane| pane.child(self.toolbar.clone()))
                                 .child(item.to_any())
                         } else {
                             let placeholder = div

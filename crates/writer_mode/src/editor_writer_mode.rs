@@ -18,6 +18,10 @@ pub fn init(cx: &mut App) {
                     let should_display_tab_bar = pane.get_should_display_tab_bar();
                     let display_tab_bar = should_display_tab_bar(window, cx);
                     pane.set_should_display_tab_bar(move |_, _| !display_tab_bar);
+
+                    let should_display_toolbar = pane.get_should_display_toolbar();
+                    let display_toolbar = should_display_toolbar(window, cx);
+                    pane.set_should_display_toolbar(move |_, _| !display_toolbar);
                 });
             }
 
