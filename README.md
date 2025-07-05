@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/zed-industries/zed/actions/workflows/ci.yml/badge.svg)](https://github.com/zed-industries/zed/actions/workflows/ci.yml)
 
-Pluma is Zed fork for creative writing.
+Pluma is Zed fork for creative writing with AI as first-class citizen.
 
 ![image](https://github.com/user-attachments/assets/2740767b-470a-4e54-b12c-e45385e2cdbe)
 
