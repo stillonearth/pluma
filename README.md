@@ -4,8 +4,7 @@
 
 Pluma is Zed fork for creative writing with AI as first-class citizen.
 
-![image](https://github.com/user-attachments/assets/fe3c7008-b398-423d-9337-1392bd0138e1)
-
+![image](https://github.com/user-attachments/assets/7109c09b-83e7-4cf3-b5d4-ed39a612f6e5)
 
 
 ### Developing Pluma
