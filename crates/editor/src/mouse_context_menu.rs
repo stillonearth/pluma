@@ -161,11 +161,6 @@ pub fn deploy_context_menu(
         };
         menu
     } else {
-        // Don't show the context menu if there isn't a project associated with this editor
-        let Some(project) = editor.project.clone() else {
-            return;
-        };
-
         let display_map = editor.selections.display_map(cx);
         let buffer = &editor.snapshot(window, cx).buffer_snapshot;
         let anchor = buffer.anchor_before(point.to_point(&display_map));
