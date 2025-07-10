@@ -15,11 +15,9 @@ use workspace::{
     open_new,
 };
 
-pub use base_keymap_setting::BaseKeymap;
 pub use multibuffer_hint::*;
 
 mod base_keymap_picker;
-mod base_keymap_setting;
 mod multibuffer_hint;
 mod welcome_ui;
 
@@ -35,8 +33,6 @@ pub const FIRST_OPEN: &str = "first_open";
 pub const DOCS_URL: &str = "https://elpluma.com/docs/";
 
 pub fn init(cx: &mut App) {
-    BaseKeymap::register(cx);
-
     cx.observe_new(|workspace: &mut Workspace, _, _cx| {
         workspace.register_action(|workspace, _: &Welcome, window, cx| {
             let welcome_page = WelcomePage::new(workspace, cx);

@@ -22,6 +22,12 @@ use util::ResultExt as _;
 #[cfg(any(feature = "wayland", feature = "x11"))]
 use xkbcommon::xkb::{self, Keycode, Keysym, State};
 
+#[cfg(feature = "x11")]
+use crate::keycode_to_key_x11;
+
+#[cfg(feature = "wayland")]
+use crate::keycode_to_key_wayland;
+
 use crate::{
     Action, AnyWindowHandle, BackgroundExecutor, ClipboardItem, CursorStyle, DisplayId,
     ForegroundExecutor, Keymap, LinuxDispatcher, Menu, MenuItem, OwnedMenu, PathPromptOptions,
@@ -200,8 +206,8 @@ impl<P: LinuxClient + 'static> Platform for P {
             app_path = app_path.display()
         );
 
-        // execute the script using /bin/bash
-        let restart_process = Command::new("/bin/bash")
+        let restart_process = Command::new("/usr/bin/env")
+            .arg("bash")
             .arg("-c")
             .arg(script)
             .process_group(0)
@@ -717,6 +723,17 @@ impl crate::Keystroke {
         let key_utf8 = state.key_get_utf8(keycode);
         let key_sym = state.key_get_one_sym(keycode);
 
+        #[allow(unreachable_code)]
+        fn keycode_to_key(key: u32) -> Option<char> {
+            #[cfg(feature = "x11")]
+            return keycode_to_key_x11(key);
+
+            #[cfg(feature = "wayland")]
+            return keycode_to_key_wayland(key);
+
+            None
+        }
+
         let key = match key_sym {
             Keysym::Return => "enter".to_owned(),
             Keysym::Prior => "pageup".to_owned(),
@@ -773,6 +790,8 @@ impl crate::Keystroke {
                 let name = xkb::keysym_get_name(key_sym).to_lowercase();
                 if key_sym.is_keypad_key() {
                     name.replace("kp_", "")
+                } else if let Some(key_en) = keycode_to_key(keycode.raw()) {
+                    String::from(key_en)
                 } else {
                     name
                 }
@@ -789,8 +808,8 @@ impl crate::Keystroke {
         }
 
         // Ignore control characters (and DEL) for the purposes of key_char
-        let key_char =
-            (key_utf32 >= 32 && key_utf32 != 127 && !key_utf8.is_empty()).then_some(key_utf8);
+        let key_char = (key_utf32 >= 32 && key_utf32 != 127 && !key_utf8.clone().is_empty())
+            .then_some(key_utf8.clone());
 
         Self {
             modifiers,

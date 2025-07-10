@@ -2272,3 +2272,46 @@ fn create_invisible_cursor(
     xcb_flush(connection);
     Ok(cursor)
 }
+
+/// Map a keycode (u32) to an ASCII character on US QWERTY layout
+pub(crate) fn keycode_to_key_x11(keycode: u32) -> Option<char> {
+    let c = match keycode {
+        24 => 'q',
+        25 => 'w',
+        26 => 'e',
+        27 => 'r',
+        28 => 't',
+        29 => 'y',
+        30 => 'u',
+        31 => 'i',
+        32 => 'o',
+        33 => 'p',
+        34 => '[',
+        35 => ']',
+        38 => 'a',
+        39 => 's',
+        40 => 'd',
+        41 => 'f',
+        42 => 'g',
+        43 => 'h',
+        44 => 'j',
+        45 => 'k',
+        46 => 'l',
+        47 => ';',
+        48 => '\'',
+        52 => 'z',
+        53 => 'x',
+        54 => 'c',
+        55 => 'v',
+        56 => 'b',
+        57 => 'n',
+        58 => 'm',
+        59 => ',',
+        60 => '.',
+        61 => '/',
+
+        _ => return None,
+    };
+
+    Some(c)
+}

@@ -15,6 +15,9 @@ pub struct Keystroke {
     /// e.g. for option-s, key is "s"
     pub key: String,
 
+    /// key_en is keyboard layout independent key char in en_US layout
+    // pub key_en: Option<char>,
+
     /// key_char is the character that could have been typed when
     /// this binding was pressed.
     /// e.g. for s this is "s", for option-s "ß", and cmd-s None
@@ -55,7 +58,7 @@ impl Keystroke {
     ///
     /// This method assumes that `self` was typed and `target' is in the keymap, and checks
     /// both possibilities for self against the target.
-    pub(crate) fn should_match(&self, target: &Keystroke) -> bool {
+    pub fn should_match(&self, target: &Keystroke) -> bool {
         #[cfg(not(target_os = "windows"))]
         if let Some(key_char) = self
             .key_char
@@ -68,7 +71,9 @@ impl Keystroke {
                 ..Default::default()
             };
 
-            if &target.key == key_char && target.modifiers == ime_modifiers {
+            if ((&target.key == key_char) || (&target.key == &self.key))
+                && target.modifiers == ime_modifiers
+            {
                 return true;
             }
         }

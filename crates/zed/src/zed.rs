@@ -30,7 +30,7 @@ use gpui::{
     px, retain_all,
 };
 use image_viewer::ImageInfo;
-use language_tools::lsp_tool::{self, LspPickerDelegate};
+use language_tools::lsp_tool::{self, LspTool};
 use migrate::{MigrationBanner, MigrationEvent, MigrationNotification, MigrationType};
 use migrator::{migrate_keymap, migrate_settings};
 pub use open_listener::*;
@@ -39,7 +39,6 @@ use paths::{
     local_debug_file_relative_path, local_settings_file_relative_path,
     local_tasks_file_relative_path,
 };
-use picker::Picker;
 use project::{DirectoryLister, ProjectItem};
 use project_panel::ProjectPanel;
 use prompt_store::PromptBuilder;
@@ -49,9 +48,10 @@ use release_channel::{AppCommitSha, ReleaseChannel};
 use rope::Rope;
 use search::project_search::ProjectSearchBar;
 use settings::{
-    DEFAULT_KEYMAP_PATH, InvalidSettingsError, KeybindSource, KeymapFile, KeymapFileLoadResult,
-    Settings, SettingsStore, VIM_KEYMAP_PATH, initial_local_debug_tasks_content,
-    initial_project_settings_content, initial_tasks_content, update_settings_file,
+    BaseKeymap, DEFAULT_KEYMAP_PATH, InvalidSettingsError, KeybindSource, KeymapFile,
+    KeymapFileLoadResult, Settings, SettingsStore, VIM_KEYMAP_PATH,
+    initial_local_debug_tasks_content, initial_project_settings_content, initial_tasks_content,
+    update_settings_file,
 };
 use std::path::PathBuf;
 use std::sync::atomic::{self, AtomicBool};
@@ -63,7 +63,7 @@ use util::markdown::MarkdownString;
 use util::{ResultExt, asset_str};
 use uuid::Uuid;
 use vim_mode_setting::VimModeSetting;
-use welcome::{BaseKeymap, DOCS_URL, MultibufferHint};
+use welcome::{DOCS_URL, MultibufferHint};
 use workspace::notifications::{NotificationId, dismiss_app_notification, show_app_notification};
 use workspace::{
     AppState, NewFile, NewWindow, OpenLog, Toast, Workspace, WorkspaceSettings,
@@ -337,9 +337,9 @@ pub fn initialize_workspace(
 
         let image_info = cx.new(|_cx| ImageInfo::new(workspace));
 
-        let lsp_tool_menu_handle: PopoverMenuHandle<Picker<LspPickerDelegate>> =
-            PopoverMenuHandle::default();
-
+        let lsp_tool_menu_handle = PopoverMenuHandle::default();
+        let _lsp_tool =
+            cx.new(|cx| LspTool::new(workspace, lsp_tool_menu_handle.clone(), window, cx));
         workspace.register_action({
             move |_, _: &lsp_tool::ToggleMenu, window, cx| {
                 lsp_tool_menu_handle.toggle(window, cx);
