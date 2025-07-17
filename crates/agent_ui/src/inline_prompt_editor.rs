@@ -258,12 +258,14 @@ impl<T: 'static> PromptEditor<T> {
     }
 
     pub fn unlink(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let prompt = self.prompt(cx);
+        let prompt = self.user_prompt(cx);
+
         let existing_creases = self.editor.update(cx, extract_message_creases);
 
         let focus = self.editor.focus_handle(cx).contains_focused(window, cx);
         self.editor = cx.new(|cx| {
             let mut editor = Editor::auto_height(1, Self::MAX_LINES as usize, window, cx);
+
             editor.set_soft_wrap_mode(language::language_settings::SoftWrap::EditorWidth, cx);
             editor.set_placeholder_text("Add a prompt…", cx);
             editor.set_text(prompt, window, cx);
@@ -303,8 +305,28 @@ impl<T: 'static> PromptEditor<T> {
         format!("{action}… ({agent_panel_keybinding}↓↑ for history)")
     }
 
-    pub fn prompt(&self, cx: &App) -> String {
+    pub fn user_prompt(&self, cx: &App) -> String {
         self.editor.read(cx).text(cx)
+    }
+
+    pub fn prompt(&self, cx: &App) -> String {
+        let user_prompt = self.user_prompt(cx);
+
+        if let Some(current_generation_mode) = self.current_generation_mode {
+            match current_generation_mode {
+                GenerationMode::Improve => format!(
+                    "Improve writing style, keep text in original language; take into account user suggestions: `{}`",
+                    user_prompt
+                ),
+                GenerationMode::Correct => {
+                    "Correct syntacing and grammar errors; keep text in original language"
+                        .to_string()
+                }
+                _ => user_prompt,
+            }
+        } else {
+            user_prompt
+        }
     }
 
     fn paste(&mut self, _: &Paste, _window: &mut Window, cx: &mut Context<Self>) {
@@ -492,6 +514,9 @@ impl<T: 'static> PromptEditor<T> {
                             .icon_color(Color::Muted)
                             .on_click(cx.listener(move |prompt_editor, _, _, cx| {
                                 prompt_editor.set_current_generation_mode(Some(button_mode));
+
+                                // self.editor.text
+
                                 cx.emit(PromptEditorEvent::StartRequested)
                             }))
                             .into_any_element(),

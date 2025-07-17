@@ -1263,11 +1263,7 @@ impl InlineAssistant {
 
         assist
             .codegen
-            .update(cx, |codegen, cx| {
-                // codegen.
-                // println!("{}", cx.);
-                codegen.start(model, user_prompt, cx)
-            })
+            .update(cx, |codegen, cx| codegen.start(model, user_prompt, cx))
             .log_err();
     }
 
