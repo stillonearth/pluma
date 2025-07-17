@@ -1263,6 +1263,8 @@ impl InlineAssistant {
             return;
         };
 
+        println!("user_prompt: {:?}", user_prompt);
+
         assist
             .codegen
             .update(cx, |codegen, cx| codegen.start(model, user_prompt, cx))

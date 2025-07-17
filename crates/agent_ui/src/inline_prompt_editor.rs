@@ -42,6 +42,7 @@ use workspace::Workspace;
 pub struct PromptEditor<T> {
     pub editor: Entity<Editor>,
     mode: PromptEditorMode,
+    current_generation_mode: Option<GenerationMode>,
     context_store: Entity<ContextStore>,
     context_strip: Entity<ContextStrip>,
     context_picker_menu_handle: PopoverMenuHandle<ContextPicker>,
@@ -286,9 +287,9 @@ impl<T: 'static> PromptEditor<T> {
         let action = match mode {
             PromptEditorMode::Buffer { codegen, .. } => {
                 if codegen.read(cx).is_insertion {
-                    "Generate"
+                    "Generate-x"
                 } else {
-                    "Transform"
+                    "Transform-x"
                 }
             }
             PromptEditorMode::Terminal { .. } => "Generate",
@@ -461,52 +462,74 @@ impl<T: 'static> PromptEditor<T> {
     }
 
     fn render_buttons(&self, _window: &mut Window, cx: &mut Context<Self>) -> Vec<AnyElement> {
-        let mode = match &self.mode {
+        let modes = match &self.mode {
             PromptEditorMode::Buffer { codegen, .. } => {
                 let codegen = codegen.read(cx);
                 if codegen.is_insertion {
-                    GenerationMode::Generate
+                    vec![GenerationMode::Generate]
                 } else {
-                    GenerationMode::Transform
+                    vec![GenerationMode::Improve, GenerationMode::Correct]
                 }
             }
-            PromptEditorMode::Terminal { .. } => GenerationMode::Generate,
+            PromptEditorMode::Terminal { .. } => vec![GenerationMode::Generate],
         };
 
         let codegen_status = self.codegen_status(cx);
 
         match codegen_status {
             CodegenStatus::Idle => {
-                vec![
-                    Button::new("start", mode.start_label())
-                        .label_size(LabelSize::Small)
-                        .icon(IconName::Return)
-                        .icon_size(IconSize::XSmall)
-                        .icon_color(Color::Muted)
-                        .on_click(
-                            cx.listener(|_, _, _, cx| cx.emit(PromptEditorEvent::StartRequested)),
-                        )
-                        .into_any_element(),
-                ]
+                let mut buttons: Vec<AnyElement> = Vec::new();
+
+                for (i, mode) in modes.iter().enumerate() {
+                    let button_mode = mode.clone();
+                    let element_id = ElementId::Name(format!("start_{}", i).into());
+
+                    buttons.push(
+                        Button::new(element_id, mode.start_label())
+                            .label_size(LabelSize::Small)
+                            .icon(IconName::Return)
+                            .icon_size(IconSize::XSmall)
+                            .icon_color(Color::Muted)
+                            .on_click(cx.listener(move |prompt_editor, _, _, cx| {
+                                prompt_editor.set_current_generation_mode(Some(button_mode));
+                                cx.emit(PromptEditorEvent::StartRequested)
+                            }))
+                            .into_any_element(),
+                    );
+                }
+
+                buttons
             }
-            CodegenStatus::Pending => vec![
-                IconButton::new("stop", IconName::Stop)
-                    .icon_color(Color::Error)
-                    .shape(IconButtonShape::Square)
-                    .tooltip(move |window, cx| {
-                        Tooltip::with_meta(
-                            mode.tooltip_interrupt(),
-                            Some(&menu::Cancel),
-                            "Changes won't be discarded",
-                            window,
-                            cx,
-                        )
-                    })
-                    .on_click(cx.listener(|_, _, _, cx| cx.emit(PromptEditorEvent::StopRequested)))
-                    .into_any_element(),
-            ],
+            CodegenStatus::Pending => {
+                if let Some(mode) = self.current_generation_mode {
+                    vec![
+                        IconButton::new("stop", IconName::Stop)
+                            .icon_color(Color::Error)
+                            .shape(IconButtonShape::Square)
+                            .tooltip(move |window, cx| {
+                                Tooltip::with_meta(
+                                    mode.tooltip_interrupt(),
+                                    Some(&menu::Cancel),
+                                    "Changes won't be discarded",
+                                    window,
+                                    cx,
+                                )
+                            })
+                            .on_click(
+                                cx.listener(|_, _, _, cx| {
+                                    cx.emit(PromptEditorEvent::StopRequested)
+                                }),
+                            )
+                            .into_any_element(),
+                    ]
+                } else {
+                    vec![]
+                }
+            }
             CodegenStatus::Done | CodegenStatus::Error(_) => {
                 let has_error = matches!(codegen_status, CodegenStatus::Error(_));
+                let mode = modes[0];
+                let button_mode = mode.clone();
                 if has_error || self.edited_since_done {
                     vec![
                         IconButton::new("restart", IconName::RotateCw)
@@ -521,7 +544,8 @@ impl<T: 'static> PromptEditor<T> {
                                     cx,
                                 )
                             })
-                            .on_click(cx.listener(|_, _, _, cx| {
+                            .on_click(cx.listener(move |prompt_editor, _, _, cx| {
+                                prompt_editor.set_current_generation_mode(Some(button_mode));
                                 cx.emit(PromptEditorEvent::StartRequested);
                             }))
                             .into_any_element(),
@@ -598,6 +622,10 @@ impl<T: 'static> PromptEditor<T> {
             .tooltip(Tooltip::text("Close Assistant"))
             .on_click(cx.listener(|_, _, _, cx| cx.emit(PromptEditorEvent::CancelRequested)))
             .into_any_element()
+    }
+
+    fn set_current_generation_mode(&mut self, generation_mode: Option<GenerationMode>) {
+        self.current_generation_mode = generation_mode;
     }
 
     fn render_cycle_controls(&self, codegen: &BufferCodegen, cx: &Context<Self>) -> AnyElement {
@@ -951,6 +979,7 @@ impl PromptEditor<BufferCodegen> {
             show_rate_limit_notice: false,
             mode,
             _phantom: Default::default(),
+            current_generation_mode: None,
         };
 
         this.subscribe_to_editor(window, cx);
@@ -1124,6 +1153,7 @@ impl PromptEditor<TerminalCodegen> {
             mode,
             show_rate_limit_notice: false,
             _phantom: Default::default(),
+            current_generation_mode: None,
         };
         this.count_lines(cx);
         this.subscribe_to_editor(window, cx);
@@ -1224,6 +1254,8 @@ impl Into<CancelButtonState> for &CodegenStatus {
 pub enum GenerationMode {
     Generate,
     Transform,
+    Improve,
+    Correct,
 }
 
 impl GenerationMode {
@@ -1231,12 +1263,16 @@ impl GenerationMode {
         match self {
             GenerationMode::Generate { .. } => "Generate",
             GenerationMode::Transform => "Transform",
+            GenerationMode::Improve => "Improve Text",
+            GenerationMode::Correct => "Correct Errors",
         }
     }
     fn tooltip_interrupt(self) -> &'static str {
         match self {
             GenerationMode::Generate { .. } => "Interrupt Generation",
             GenerationMode::Transform => "Interrupt Transform",
+            GenerationMode::Improve => "Interrup Improving",
+            GenerationMode::Correct => "Interract Correction",
         }
     }
 
@@ -1244,6 +1280,8 @@ impl GenerationMode {
         match self {
             GenerationMode::Generate { .. } => "Restart Generation",
             GenerationMode::Transform => "Restart Transform",
+            GenerationMode::Improve => "Restart Improving",
+            GenerationMode::Correct => "Restart Correcting",
         }
     }
 
@@ -1251,6 +1289,8 @@ impl GenerationMode {
         match self {
             GenerationMode::Generate { .. } => "Accept Generation",
             GenerationMode::Transform => "Accept Transform",
+            GenerationMode::Improve => "Accept Text",
+            GenerationMode::Correct => "Accept Correection",
         }
     }
 }
