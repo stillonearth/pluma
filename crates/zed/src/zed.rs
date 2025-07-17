@@ -4322,6 +4322,7 @@ mod tests {
                 "jj",
                 "journal",
                 "keymap_editor",
+                "keystroke_input",
                 "language_selector",
                 "lsp_tool",
                 "markdown",

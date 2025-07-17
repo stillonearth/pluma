@@ -22,12 +22,6 @@ use util::ResultExt as _;
 #[cfg(any(feature = "wayland", feature = "x11"))]
 use xkbcommon::xkb::{self, Keycode, Keysym, State};
 
-#[cfg(feature = "x11")]
-use crate::keycode_to_key_x11;
-
-#[cfg(feature = "wayland")]
-use crate::keycode_to_key_wayland;
-
 use crate::{
     Action, AnyWindowHandle, BackgroundExecutor, ClipboardItem, CursorStyle, DisplayId,
     ForegroundExecutor, Keymap, LinuxDispatcher, Menu, MenuItem, OwnedMenu, PathPromptOptions,
@@ -713,6 +707,60 @@ pub(super) fn log_cursor_icon_warning(message: impl std::fmt::Display) {
 }
 
 #[cfg(any(feature = "wayland", feature = "x11"))]
+fn guess_ascii(keycode: Keycode, shift: bool) -> Option<char> {
+    let c = match (keycode.raw(), shift) {
+        (24, _) => 'q',
+        (25, _) => 'w',
+        (26, _) => 'e',
+        (27, _) => 'r',
+        (28, _) => 't',
+        (29, _) => 'y',
+        (30, _) => 'u',
+        (31, _) => 'i',
+        (32, _) => 'o',
+        (33, _) => 'p',
+        (34, false) => '[',
+        (34, true) => '{',
+        (35, false) => ']',
+        (35, true) => '}',
+        (38, _) => 'a',
+        (39, _) => 's',
+        (40, _) => 'd',
+        (41, _) => 'f',
+        (42, _) => 'g',
+        (43, _) => 'h',
+        (44, _) => 'j',
+        (45, _) => 'k',
+        (46, _) => 'l',
+        (47, false) => ';',
+        (47, true) => ':',
+        (48, false) => '\'',
+        (48, true) => '"',
+        (49, false) => '`',
+        (49, true) => '~',
+        (51, false) => '\\',
+        (51, true) => '|',
+        (52, _) => 'z',
+        (53, _) => 'x',
+        (54, _) => 'c',
+        (55, _) => 'v',
+        (56, _) => 'b',
+        (57, _) => 'n',
+        (58, _) => 'm',
+        (59, false) => ',',
+        (59, true) => '>',
+        (60, false) => '.',
+        (60, true) => '<',
+        (61, false) => '/',
+        (61, true) => '?',
+
+        _ => return None,
+    };
+
+    Some(c)
+}
+
+#[cfg(any(feature = "wayland", feature = "x11"))]
 impl crate::Keystroke {
     pub(super) fn from_xkb(
         state: &State,
@@ -722,17 +770,6 @@ impl crate::Keystroke {
         let key_utf32 = state.key_get_utf32(keycode);
         let key_utf8 = state.key_get_utf8(keycode);
         let key_sym = state.key_get_one_sym(keycode);
-
-        #[allow(unreachable_code)]
-        fn keycode_to_key(key: u32) -> Option<char> {
-            #[cfg(feature = "x11")]
-            return keycode_to_key_x11(key);
-
-            #[cfg(feature = "wayland")]
-            return keycode_to_key_wayland(key);
-
-            None
-        }
 
         let key = match key_sym {
             Keysym::Return => "enter".to_owned(),
@@ -785,12 +822,29 @@ impl crate::Keystroke {
             Keysym::underscore => "_".to_owned(),
             Keysym::equal => "=".to_owned(),
             Keysym::plus => "+".to_owned(),
+            Keysym::space => "space".to_owned(),
+            Keysym::BackSpace => "backspace".to_owned(),
+            Keysym::Tab => "tab".to_owned(),
+            Keysym::Delete => "delete".to_owned(),
+            Keysym::Escape => "escape".to_owned(),
 
             _ => {
                 let name = xkb::keysym_get_name(key_sym).to_lowercase();
                 if key_sym.is_keypad_key() {
                     name.replace("kp_", "")
-                } else if let Some(key_en) = keycode_to_key(keycode.raw()) {
+                } else if let Some(key) = key_utf8.chars().next()
+                    && key_utf8.len() == 1
+                    && key.is_ascii()
+                {
+                    if key.is_ascii_graphic() {
+                        key_utf8.clone()
+                    // map ctrl-a to a
+                    } else if key_utf32 <= 0x1f {
+                        ((key_utf32 as u8 + 0x60) as char).to_string()
+                    } else {
+                        name
+                    }
+                } else if let Some(key_en) = guess_ascii(keycode, modifiers.shift) {
                     String::from(key_en)
                 } else {
                     name
@@ -808,8 +862,8 @@ impl crate::Keystroke {
         }
 
         // Ignore control characters (and DEL) for the purposes of key_char
-        let key_char = (key_utf32 >= 32 && key_utf32 != 127 && !key_utf8.clone().is_empty())
-            .then_some(key_utf8.clone());
+        let key_char =
+            (key_utf32 >= 32 && key_utf32 != 127 && !key_utf8.is_empty()).then_some(key_utf8);
 
         Self {
             modifiers,

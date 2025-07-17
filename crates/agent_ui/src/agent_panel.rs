@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::ops::Range;
 use std::path::Path;
 use std::rc::Rc;
@@ -8,6 +9,7 @@ use db::kvp::{Dismissable, KEY_VALUE_STORE};
 use serde::{Deserialize, Serialize};
 
 use crate::NewAcpThread;
+use crate::agent_diff::AgentDiffThread;
 use crate::language_model_selector::ToggleModelSelector;
 use crate::{
     AddContextServer, AgentDiffPane, ContinueThread, ContinueWithBurnMode,
@@ -432,6 +434,8 @@ pub struct AgentPanel {
     configuration_subscription: Option<Subscription>,
     local_timezone: UtcOffset,
     active_view: ActiveView,
+    acp_message_history:
+        Rc<RefCell<crate::acp::MessageHistory<agentic_coding_protocol::SendUserMessageParams>>>,
     previous_view: Option<ActiveView>,
     history_store: Entity<HistoryStore>,
     history: Entity<ThreadHistory>,
@@ -624,7 +628,7 @@ impl AgentPanel {
             }
         };
 
-        AgentDiff::set_active_thread(&workspace, &thread, window, cx);
+        AgentDiff::set_active_thread(&workspace, thread.clone(), window, cx);
 
         let weak_panel = weak_self.clone();
 
@@ -698,6 +702,7 @@ impl AgentPanel {
             .unwrap(),
             inline_assist_context_store,
             previous_view: None,
+            acp_message_history: Default::default(),
             history_store: history_store.clone(),
             history: cx.new(|cx| ThreadHistory::new(weak_self, history_store, window, cx)),
             hovered_recent_history_item: None,
@@ -770,13 +775,10 @@ impl AgentPanel {
     }
 
     fn new_thread(&mut self, action: &NewThread, window: &mut Window, cx: &mut Context<Self>) {
-        // Preserve chat box text when using creating new thread from summary'
-        let preserved_text = if action.from_thread_id.is_some() {
-            self.active_message_editor()
-                .map(|editor| editor.read(cx).get_text(cx).trim().to_string())
-        } else {
-            None
-        };
+        // Preserve chat box text when using creating new thread
+        let preserved_text = self
+            .active_message_editor()
+            .map(|editor| editor.read(cx).get_text(cx).trim().to_string());
 
         let thread = self
             .thread_store
@@ -848,7 +850,7 @@ impl AgentPanel {
         let thread_view = ActiveView::thread(active_thread.clone(), message_editor, window, cx);
         self.set_active_view(thread_view, window, cx);
 
-        AgentDiff::set_active_thread(&self.workspace, &thread, window, cx);
+        AgentDiff::set_active_thread(&self.workspace, thread.clone(), window, cx);
     }
 
     fn new_prompt_editor(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -890,14 +892,30 @@ impl AgentPanel {
     fn new_gemini_thread(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let workspace = self.workspace.clone();
         let project = self.project.clone();
+        let message_history = self.acp_message_history.clone();
 
         cx.spawn_in(window, async move |this, cx| {
             let thread_view = cx.new_window_entity(|window, cx| {
-                crate::acp::AcpThreadView::new(workspace, project, window, cx)
+                crate::acp::AcpThreadView::new(
+                    workspace.clone(),
+                    project,
+                    message_history,
+                    window,
+                    cx,
+                )
             })?;
             this.update_in(cx, |this, window, cx| {
-                this.set_active_view(ActiveView::AcpThread { thread_view }, window, cx);
+                this.set_active_view(
+                    ActiveView::AcpThread {
+                        thread_view: thread_view.clone(),
+                    },
+                    window,
+                    cx,
+                );
             })
+            .log_err();
+
+            anyhow::Ok(())
         })
         .detach();
     }
@@ -1053,7 +1071,7 @@ impl AgentPanel {
 
         let thread_view = ActiveView::thread(active_thread.clone(), message_editor, window, cx);
         self.set_active_view(thread_view, window, cx);
-        AgentDiff::set_active_thread(&self.workspace, &thread, window, cx);
+        AgentDiff::set_active_thread(&self.workspace, thread.clone(), window, cx);
     }
 
     pub fn go_back(&mut self, _: &workspace::GoBack, window: &mut Window, cx: &mut Context<Self>) {
@@ -1184,7 +1202,12 @@ impl AgentPanel {
                 let thread = thread.read(cx).thread().clone();
                 self.workspace
                     .update(cx, |workspace, cx| {
-                        AgentDiffPane::deploy_in_workspace(thread, workspace, window, cx)
+                        AgentDiffPane::deploy_in_workspace(
+                            AgentDiffThread::Native(thread),
+                            workspace,
+                            window,
+                            cx,
+                        )
                     })
                     .log_err();
             }
@@ -1419,6 +1442,8 @@ impl AgentPanel {
             }
             self.active_view = new_view;
         }
+
+        self.acp_message_history.borrow_mut().reset_position();
 
         self.focus_handle(cx).focus(window);
     }
@@ -1896,6 +1921,7 @@ impl AgentPanel {
                                 category_filter: Some(
                                     zed_actions::ExtensionCategoryFilter::ContextServers,
                                 ),
+                                id: None,
                             }),
                         )
                         .action("Add Custom Server…", Box::new(AddContextServer))
@@ -1949,48 +1975,45 @@ impl AgentPanel {
     }
 
     fn render_token_count(&self, cx: &App) -> Option<AnyElement> {
-        let (active_thread, message_editor) = match &self.active_view {
+        match &self.active_view {
             ActiveView::Thread {
                 thread,
                 message_editor,
                 ..
-            } => (thread.read(cx), message_editor.read(cx)),
-            ActiveView::AcpThread { .. } => {
-                return None;
-            }
-            ActiveView::TextThread { .. } | ActiveView::History | ActiveView::Configuration => {
-                return None;
-            }
-        };
+            } => {
+                let active_thread = thread.read(cx);
+                let message_editor = message_editor.read(cx);
 
-        let editor_empty = message_editor.is_editor_fully_empty(cx);
+                let editor_empty = message_editor.is_editor_fully_empty(cx);
 
-        if active_thread.is_empty() && editor_empty {
-            return None;
-        }
+                if active_thread.is_empty() && editor_empty {
+                    return None;
+                }
 
-        let thread = active_thread.thread().read(cx);
-        let is_generating = thread.is_generating();
-        let conversation_token_usage = thread.total_token_usage()?;
+                let thread = active_thread.thread().read(cx);
+                let is_generating = thread.is_generating();
+                let conversation_token_usage = thread.total_token_usage()?;
 
-        let (total_token_usage, is_estimating) =
-            if let Some((editing_message_id, unsent_tokens)) = active_thread.editing_message_id() {
-                let combined = thread
-                    .token_usage_up_to_message(editing_message_id)
-                    .add(unsent_tokens);
+                let (total_token_usage, is_estimating) =
+                    if let Some((editing_message_id, unsent_tokens)) =
+                        active_thread.editing_message_id()
+                    {
+                        let combined = thread
+                            .token_usage_up_to_message(editing_message_id)
+                            .add(unsent_tokens);
 
-                (combined, unsent_tokens > 0)
-            } else {
-                let unsent_tokens = message_editor.last_estimated_token_count().unwrap_or(0);
-                let combined = conversation_token_usage.add(unsent_tokens);
+                        (combined, unsent_tokens > 0)
+                    } else {
+                        let unsent_tokens =
+                            message_editor.last_estimated_token_count().unwrap_or(0);
+                        let combined = conversation_token_usage.add(unsent_tokens);
 
-                (combined, unsent_tokens > 0)
-            };
+                        (combined, unsent_tokens > 0)
+                    };
 
-        let is_waiting_to_update_token_count = message_editor.is_waiting_to_update_token_count();
+                let is_waiting_to_update_token_count =
+                    message_editor.is_waiting_to_update_token_count();
 
-        match &self.active_view {
-            ActiveView::Thread { .. } => {
                 if total_token_usage.total == 0 {
                     return None;
                 }

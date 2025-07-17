@@ -1,6 +1,6 @@
 // use collab_ui::collab_panel;
 use gpui::{Menu, MenuItem, OsAction};
-// use terminal_view::terminal_panel;
+use settings_ui::keybindings;
 
 pub fn app_menus() -> Vec<Menu> {
     use zed_actions::Quit;
@@ -16,7 +16,7 @@ pub fn app_menus() -> Vec<Menu> {
                     name: "Settings".into(),
                     items: vec![
                         MenuItem::action("Open Settings", super::OpenSettings),
-                        MenuItem::action("Open Key Bindings", zed_actions::OpenKeymap),
+                        MenuItem::action("Open Key Bindings", keybindings::OpenKeymapEditor),
                         MenuItem::action("Open Default Settings", super::OpenDefaultSettings),
                         MenuItem::action(
                             "Open Default Key Bindings",
