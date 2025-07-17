@@ -240,14 +240,14 @@ impl Render for CursorPosition {
                     }))
                     .tooltip(move |window, cx| match context.as_ref() {
                         Some(context) => Tooltip::for_action_in(
-                            "Go to Line/Column",
+                            "Go to Line/Column 3",
                             &editor::actions::ToggleGoToLine,
                             context,
                             window,
                             cx,
                         ),
                         None => Tooltip::for_action(
-                            "Go to Line/Column",
+                            "Go to Line/Column 2",
                             &editor::actions::ToggleGoToLine,
                             window,
                             cx,

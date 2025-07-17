@@ -19512,6 +19512,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "word_count"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "editor",
+ "gpui",
+ "indoc",
+ "language",
+ "menu",
+ "project",
+ "rope",
+ "schemars",
+ "serde",
+ "serde_json",
+ "settings",
+ "text",
+ "theme",
+ "tree-sitter-rust",
+ "tree-sitter-typescript",
+ "ui",
+ "util",
+ "workspace",
+ "workspace-hack",
+]
+
+[[package]]
 name = "workspace"
 version = "0.1.0"
 dependencies = [
@@ -20263,6 +20289,7 @@ dependencies = [
  "welcome",
  "windows 0.61.1",
  "winresource",
+ "word_count",
  "workspace",
  "workspace-hack",
  "writer_mode",

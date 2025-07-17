@@ -348,6 +348,9 @@ pub fn initialize_workspace(
 
         let cursor_position =
             cx.new(|_| go_to_line::cursor_position::CursorPosition::new(workspace));
+
+        let wordcount = cx.new(|_| word_count::WordCount::new());
+
         workspace.status_bar().update(cx, |status_bar, cx| {
             status_bar.add_left_item(search_button, window, cx);
             status_bar.add_left_item(writer_mode_button, window, cx);
@@ -355,6 +358,7 @@ pub fn initialize_workspace(
             status_bar.add_left_item(activity_indicator, window, cx);
             status_bar.add_right_item(edit_prediction_button, window, cx);
 
+            status_bar.add_right_item(wordcount, window, cx);
             status_bar.add_right_item(cursor_position, window, cx);
             status_bar.add_right_item(image_info, window, cx);
         });
@@ -4353,6 +4357,7 @@ mod tests {
                 "toolchain",
                 "variable_list",
                 "vim",
+                "word_count",
                 "welcome",
                 "workspace",
                 "zed",

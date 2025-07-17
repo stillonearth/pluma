@@ -398,6 +398,7 @@ watch = { path = "crates/watch" }
 web_search = { path = "crates/web_search" }
 web_search_providers = { path = "crates/web_search_providers" }
 welcome = { path = "crates/welcome" }
+word_count = { path = "crates/word_count" }
 workspace = { path = "crates/workspace" }
 worktree = { path = "crates/worktree" }
 x_ai = { path = "crates/x_ai" }

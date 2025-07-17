@@ -289,9 +289,9 @@ impl<T: 'static> PromptEditor<T> {
         let action = match mode {
             PromptEditorMode::Buffer { codegen, .. } => {
                 if codegen.read(cx).is_insertion {
-                    "Generate-x"
+                    "Generate"
                 } else {
-                    "Transform-x"
+                    "Transform"
                 }
             }
             PromptEditorMode::Terminal { .. } => "Generate",
